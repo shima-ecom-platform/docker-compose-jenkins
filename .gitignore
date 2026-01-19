@@ -1,0 +1,23 @@
+# Docker
+phase1/data/
+phase1/logs/
+phase2/data/
+phase2/logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
