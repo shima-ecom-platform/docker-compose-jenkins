@@ -88,14 +88,15 @@ curl http://localhost:8080/api/health
 ##### 方法1: インタラクティブに接続(推奨)
 
 ```bash
-# PostgreSQLプロンプトに入る
-docker-compose exec -it postgres psql -U phase1_user -d phase1_db
+# PostgreSQLプロンプトに入る(WSL2では使用不可)
+# TTY（擬似端末）の制限: Windowsのターミナルエミュレーションでは、完全なPTY（擬似端末）が正しく機能しない
+# docker-compose exec -it postgres psql -U phase1_user -d phase1_db
 
 # SQL実行 (psqlプロンプト内)
-phase1_db=> SELECT * FROM users;
-phase1_db=> SELECT * FROM products;
-phase1_db=> \dt   # テーブル一覧
-phase1_db=> \q    # 終了
+# phase1_db=> SELECT * FROM users;
+# phase1_db=> SELECT * FROM products;
+# phase1_db=> \dt   # テーブル一覧
+# phase1_db=> \q    # 終了
 ```
 
 ⚠️ **重要**: `phase1_db=>` プロンプトで SQL を実行してください。シェルプロンプト (`$`) で実行するとエラーになります。
@@ -113,11 +114,13 @@ docker-compose exec postgres psql -U phase1_user -d phase1_db -c "SELECT * FROM 
 ##### 方法3: 複数コマンド実行
 
 ```bash
-docker-compose exec postgres psql -U phase1_user -d phase1_db << 'EOF_SQL'
-SELECT * FROM users;
-SELECT * FROM products;
-\dt
-EOF_SQL
+#   これも実行すると下記のエラーが発生して使えない
+# the input device is not a TTY
+# docker-compose exec postgres psql -U phase1_user -d phase1_db << 'EOF_SQL'
+# SELECT * FROM users;
+# SELECT * FROM products;
+# \dt
+# EOF_SQL
 ```
 
 ### ステップ4: コンテナ状態確認
@@ -128,7 +131,7 @@ docker-compose ps
 
 # ネットワーク確認
 docker network ls
-docker network inspect phase1_phase1-network
+docker network inspect phase1_app-network
 
 # ボリューム確認
 docker volume ls
@@ -169,7 +172,12 @@ docker-compose down --rmi all -v
 
 ```bash
 # ポート使用状況確認
-netstat -ano | findstr :8080
+netstat -ano | grep :8080
+# または
+ss -tlnp | grep :8080
+
+# ポート使用状況確認 (Windows PowerShell)
+# netstat -ano | findstr :8080
 
 # docker-compose.ymlのポート変更例
 # ports: "8080:80" → "8081:80"

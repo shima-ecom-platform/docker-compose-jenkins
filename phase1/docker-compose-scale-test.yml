@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # スケールアウト可能なWebサーバー
+  web:
+    image: nginx:alpine
+    expose:
+      - "80"
+    networks:
+      - app-network
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+    restart: unless-stopped
+
+  # ロードバランサー（Nginx）
+  loadbalancer:
+    image: nginx:alpine
+    container_name: phase1-loadbalancer
+    ports:
+      - "8080:80"
+    networks:
+      - app-network
+    depends_on:
+      - web
+    volumes:
+      - ./nginx-lb.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+
+  # PostgreSQL データベース
+  postgres:
+    image: postgres:15-alpine
+    container_name: phase1-postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    environment:
+      POSTGRES_DB: phase1_db
+      POSTGRES_USER: phase1_user
+      POSTGRES_PASSWORD: phase1_pass
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
