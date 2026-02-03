@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # Nginx Webサーバー
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: phase1-nginx
+    ports:
+      - "8080:80"
+    networks:
+      - app-network
+    depends_on:
+      - app
+      - postgres
+    environment:
+      - NGINX_HOST=${NGINX_HOST}
+      - NGINX_PORT=${NGINX_PORT}
+    volumes:
+      # Nginxログの永続化
+      - nginx-logs:/var/log/nginx
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: my-backend:latest
+    expose:
+      - "80"
+    networks:
+      - app-network
+    environment:
+      - NODE_ENV=${NODE_ENV}
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # PostgreSQL データベース
+  postgres:
+    image: postgres:15-alpine
+    container_name: phase1-postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    environment:
+      # データベース設定
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # データベースデータの永続化
+      - postgres-data:/var/lib/postgresql/data
+      # 初期化SQLスクリプト（オプション）
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phase1_user -d phase1_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+# ネットワーク定義
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ボリューム定義（永続化）
+volumes:
+  postgres-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
+  nginx-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./logs/nginx
